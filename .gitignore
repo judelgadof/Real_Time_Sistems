@@ -1,0 +1,37 @@
+# Archivos de compilación
+*.o
+*.elf
+*.bin
+*.map
+
+# Directorios generados por el sistema de build
+build/
+.cache/
+dist/
+
+# Configuración del entorno local
+.vscode/
+.idea/
+*.log
+
+# Archivos de depuración
+*.coredump
+*.dbg
+*.gdb
+
+# Configuración y caché del SDK de Espressif
+sdkconfig
+sdkconfig.old
+sdkconfig.*
+
+# Dependencias del compilador
+*.d
+
+# Archivos de Python
+*.pyc
+__pycache__/
+
+# Otros archivos generados
+*.bak
+*.tmp
+.DS_Store
