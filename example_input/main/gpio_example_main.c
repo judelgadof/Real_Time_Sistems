@@ -46,7 +46,7 @@
  * 1ULL<<GPIO_OUTPUT_IO_1 is equal to 0000000000000000000010000000000000000000
  * GPIO_OUTPUT_PIN_SEL                0000000000000000000011000000000000000000
  * */
-#define GPIO_INPUT_IO_0     GPIO_NUM_0
+
 /*
 #define GPIO_INPUT_IO_1     CONFIG_GPIO_INPUT_1
 #define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_0) | (1ULL<<GPIO_INPUT_IO_1))
@@ -58,19 +58,62 @@
  * 1ULL<<GPIO_INPUT_IO_1 is equal to 0000000000000000000000000000000000100000
  * GPIO_INPUT_PIN_SEL                0000000000000000000000000000000000110000
  * */
-#define ESP_INTR_FLAG_DEFAULT 0
+#define GPIO_INPUT_IO_0     GPIO_NUM_0
 #define LED_GPIO GPIO_NUM_2
 #define CONFIG_BLINK_PERIOD 200
 
-static uint8_t s_led_state = 0;
-static uint8_t s_blink_enable = 0;
-static uint8_t last_button_state = 1;
+QueueHandle_t xButtonQueue;
 
+// Cola para la comunicación entre tareas
+typedef enum {
+STATE_ONE,
+STATE_TWO
+} STATE_LED;
 
-static void blink_led(void)
+//Tarea para manejar el LED
+static void blink_led_task (void)
 {
-    /* Set the GPIO level according to the state (LOW or HIGH)*/
-    gpio_set_level(LED_GPIO, s_led_state);
+    STATE_LED button_state;
+    while(1){
+        if (XQueueReceived(xButtonQueue,&button_state, portMAX_DELAY)){
+            if(button_state == STATE_ONE){
+                while (button_state == STATE_ONE){
+                    gpio_set_level(LED_GPIO, STATE_TWO);
+                    vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
+                    gpio_set_level(LED_GPIO, STATE_ONE);
+                    vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
+                
+                
+                // Revisar si hay un nuevo estado
+                if (xQueueReceive(xButtonQueue, &button_state, STATE_ONE)) {
+                break; // Salir del ciclo si el estado cambia
+                
+                }
+            }
+        } else
+             gpio_set_level(LED_GPIO, 0); //Apagar LED
+
+    }
+    
+}
+
+void vButton_task(void* parameter) {
+    static int last_button_state = STATE_TWO; // Botón inicialmente en estado alto (pull-up)
+    static STATE_LED state = STATE_ONE;
+    while (1) {
+        int current_button_state = gpio_get_level(GPIO_INPUT_IO_0);
+
+        if (last_button_state == STATE_TWO && current_button_state == STATE_ONE) { // Botón presionado
+            // Cambiar el estado del LED
+            state = (state == STATE_ONE) ? STATE_TWO : STATE_ONE;
+
+            // Enviar el nuevo estado a la cola
+            xQueueSend(xButtonQueue, &state, portMAX_DELAY);
+        }
+
+        last_button_state = current_button_state; // Actualizar el estado anterior
+        vTaskDelay(50 / portTICK_PERIOD_MS); // Retardo para evitar rebotes
+    }
 }
 
 static void configure_led(void)
@@ -79,6 +122,8 @@ static void configure_led(void)
     /* Set the GPIO as a push/pull output */
     gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
 }
+
+
 
 static void configure_button(void)
 {
@@ -100,36 +145,14 @@ static void configure_button(void)
 
 void app_main(void)
 {
-    configure_button();
-    configure_led();
-    uint8_t current_button_state = 0;
+    // Crear la cola
+    xButtonQueue = xQueueCreate(10, sizeof(STATE_LED));
+    if (xButtonQueue == NULL) {
+        printf("Error al crear la cola.\n");
+        return;
+    }
 
-    //int cnt = 0;
-    while (1) {
-        current_button_state = gpio_get_level(GPIO_INPUT_IO_0); // Leer el nivel lógico del pin
-        if (last_button_state == 1 && current_button_state == 0) {
-            printf("Botón PRESIONADO\n");
-            
-            /* Toggle blinking state */
-            s_blink_enable = !s_blink_enable;
-            if (s_blink_enable)
-                printf("Parpadeo Activado\n");
-            else 
-                printf("Parpadeo Descativado\n");
-
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-        }
-
-        last_button_state = current_button_state;
-
-        if (s_blink_enable) {
-            s_led_state = !s_led_state;
-             blink_led();
-             vTaskDelay(CONFIG_BLINK_PERIOD / portTICK_PERIOD_MS);
-
-        } else{
-            gpio_set_level(LED_GPIO, 0);
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-        }   
-    }        
+    // Crear las tareas
+    xTaskCreate(vButton_task, "Button Task", 2048, NULL, 1, NULL);
+    xTaskCreate(vLed_task, "LED Task", 2048, NULL, 1, NULL);
 }
