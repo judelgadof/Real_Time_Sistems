@@ -17,7 +17,7 @@ void app_main() {
         .blue_channel_num    = 2,       // LEDC_CHANNEL_2
         .duty_resolution_bits= 13,      // Resolución de 13 bits
         .frequency_hz        = 5000,    // Frecuencia de PWM 5 kHz
-        .speed_mode          = 0        // LEDC_LOW_SPEED_MODE
+        .speed_mode          = 0      // LEDC_LOW_SPEED_MODE
     };
 
     // Inicialización del LED RGB
@@ -29,9 +29,9 @@ void app_main() {
 
      // Define un color usando la estructura
     rgb_color_t color = {
-        .red_percent   = 0,
+        .red_percent   = 100,
         .green_percent = 0, 
-        .blue_percent  = 0  
+        .blue_percent  = 0 
     };
 
     // Ajusta el LED a este color

@@ -48,9 +48,9 @@ esp_err_t rgb_led_set_color_struct(const rgb_led_config_t *config, const rgb_col
     uint32_t max_duty = (1 << config->duty_resolution_bits) - 1;
 
     // Calcula el duty cycle para cada canal
-    uint32_t red_duty = (uint32_t)(max_duty * (color->red_percent / 100.0));
-    uint32_t green_duty = (uint32_t)(max_duty * (color->green_percent / 100.0));
-    uint32_t blue_duty = (uint32_t)(max_duty * (color->blue_percent / 100.0));
+    uint32_t red_duty = (uint32_t) max_duty - (color->red_percent  * (max_duty/ 100.0));
+    uint32_t green_duty = (uint32_t) max_duty - (color->green_percent * (max_duty / 100.0));
+    uint32_t blue_duty = (uint32_t) max_duty - (color->blue_percent * (max_duty / 100.0));
 
     // Aplica los valores usando la API de LEDC
     ledc_set_duty(config->speed_mode, config->red_channel_num, red_duty);
