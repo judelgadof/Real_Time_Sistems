@@ -19,7 +19,7 @@ dist/
 *.dbg
 *.gdb
 
-# Configuración y caché del SDK de Espressif..
+# Configuración y caché del SDK de Espressif...
 sdkconfig
 sdkconfig.old
 sdkconfig.*
