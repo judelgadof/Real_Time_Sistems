@@ -94,7 +94,6 @@ esp_err_t  rgb_select_color ( float value_red, float value_green, float value_bl
     ledc_set_duty    ( led_config_t.speed_mode, led_config_t.blue_channel_num, blue_duty );
     ledc_update_duty ( led_config_t.speed_mode, led_config_t.blue_channel_num );
 
-    printf("red_duty: %lu\n", red_duty);
 
     return ESP_OK;
 }

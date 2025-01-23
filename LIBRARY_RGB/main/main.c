@@ -29,7 +29,7 @@ void app_main() {
 
      // Define un color usando la estructura
     rgb_color_t color = {
-        .red_percent   = 100,
+        .red_percent   = 0,
         .green_percent = 0, 
         .blue_percent  = 0 
     };

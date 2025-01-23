@@ -8,5 +8,6 @@
 #define LED_RED_PIN                 5
 #define LED_GREEN_PIN               19
 #define LED_BLUE_PIN                4
+#define BUTTON_PIN                  0
 
 #endif // MAIN_H
