@@ -7,7 +7,7 @@ void app_main() {
         .gpio_red   = 5,  // Cambia según tu hardware
         .gpio_green = 19,
         .gpio_blue  = 4
-    };
+    }; 
 
     // Configuración del LED RGB usando enteros
     rgb_led_config_t led_config = {
