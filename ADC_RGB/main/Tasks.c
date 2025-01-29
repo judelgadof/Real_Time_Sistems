@@ -85,7 +85,7 @@ switch (current_color) {
 
 
 /**
- * @brief Tarea para leer el valor del potenciómetro y actualizar la intensidad global.
+ * @brief Tarea para leer el valor del potenciómetro y actualizar la intensidad global..
  */
 void potentiometer_task ( int *arg ) {
     *arg = 0;
