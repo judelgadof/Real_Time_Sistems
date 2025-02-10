@@ -38,7 +38,7 @@ typedef struct {
 
 
 
-// Definir la cola para datos UART
+//  Definir la cola para datos UART
 extern QueueHandle_t uart_data_queue;
 extern QueueHandle_t uart_queue;
 
