@@ -21,14 +21,11 @@ typedef enum {
     COLOR_COUNT
 } led_color_t;
 
-extern adc_t potentiometer_adc; 
-extern QueueHandle_t button_queue;
-extern QueueHandle_t uart_queue;
 
-void button_task ( void *arg );
-void led_task    ( int *arg );
-void potentiometer_task ( int *arg );
-void uart_task ( void *arg );
-void set_rgb_color ( float red_t, float green_t, float blue_t );
+/**
+ * @brief Tarea para manejar la ejecución de comandos UART y actualizar el LED RGB.
+ * @param arg Argumento opcional.
+ */
+void uart_led_task(void *arg);
 
 #endif // TASKS_H

@@ -1,39 +1,59 @@
 #include "UART_Library.h"
 
-//static const char *TAG = "UART_LIBRARY";
+// Definir las colas para datos UART
+QueueHandle_t uart_data_queue;
+QueueHandle_t uart_event_queue;
 
+// Inicializar la estructura con valores predeterminados
+ranges_config_t ranges_config = {
+    .temp_red_min   = R_MIN,
+    .temp_red_max   = R_MAX,
+    .temp_green_min = G_MIN,
+    .temp_green_max = G_MAX,
+    .temp_blue_min  = B_MIN,
+    .temp_blue_max  = B_MAX
+};
 
 void print_help_message (void) {
     printf ( "\n================ COMMAND LIST ================\n" );
-    printf ( "RED            -> Set color to Red\n" );
-    printf ( "GREEN          -> Set color to Green\n" );
-    printf ( "BLUE           -> Set color to Blue\n" );
-    printf ( "SET_RED X      -> Set Red intensity (0-100)\n" );
-    printf ( "SET_GREEN X    -> Set Green intensity (0-100)\n" );
-    printf ( "SET_BLUE X     -> Set Blue intensity (0-100)\n" );
-    printf ( "Show the current color values\n" );
+    printf ( "SET_INT_RED X      -> Set Red intensity (0-100)\n" );
+    printf ( "SET_INT_GREEN X    -> Set Green intensity (0-100)\n" );
+    printf ( "SET_INT_BLUE X     -> Set Blue intensity (0-100)\n" );
+    printf ( "SET_RANGE_BLUE X Y -> Set BLUE Ranges (0-120)\n" );
+    printf ( "SET_RANGE_GREEN X Y -> Set GREEN Ranges (0-120)\n" );
+    printf ( "SET_RANGE_RED X Y -> Set RED Ranges (0-120)\n" );
     printf ( "HELP           -> Show this help message\n" );
     printf ( "==============================================\n\n" );
 }
 
-// 🔹 Valida valores de intensidad (0-100)
 float validate_intensity ( float value ) {
-    if ( value < 0 ) return 0;
-    if ( value > 100 ) return 100;
+    if ( value < LED_OFF ) return LED_OFF;
+    if ( value > LED_ON ) return LED_ON;
     return value;
 }
 
-// 🔹 Convierte una cadena a mayúsculas
-void to_uppercase ( char *str ) {
-    while ( *str ) {
-        *str = toupper (( unsigned char ) *str );
+float validate_temp ( float value ) {
+    if ( value < -10 ) return -10;
+    if ( value > 120 ) return 120;
+    return value;
+}
+
+/**
+ * @brief Convierte una cadena a mayúsculas.
+ */
+void to_uppercase(char *str) {
+    while (*str) {
+        if (isalpha((unsigned char)*str)) {
+            *str = toupper((unsigned char)*str);
+        }
         str++;
     }
 }
 
-
-// Inicialización de UART
-void uart_init ( int tx_pin, int rx_pin, int baud_rate, int uart_num, QueueHandle_t *uart_queue ) {
+/**
+ * @brief Inicializa la UART con los parámetros especificados.
+ */
+void uart_init(int tx_pin, int rx_pin, int baud_rate, int uart_num, QueueHandle_t *uart_queue) {
     uart_config_t uart_config = {
         .baud_rate = baud_rate,
         .data_bits = UART_DATA_8_BITS,
@@ -43,82 +63,59 @@ void uart_init ( int tx_pin, int rx_pin, int baud_rate, int uart_num, QueueHandl
         .source_clk = UART_SCLK_DEFAULT,
     };
 
-    *uart_queue = xQueueCreate ( UART_QUEUE_SIZE, sizeof ( uart_event_t ));
-    if ( *uart_queue == NULL ) {
-        printf ( "Failed to create UART event queue!\n" );
+    if (uart_data_queue == NULL) {
+        uart_data_queue = xQueueCreate(UART_QUEUE_SIZE, UART_BUFFER_SIZE);
+    }
+    if (uart_event_queue == NULL) {
+        uart_event_queue = xQueueCreate(UART_QUEUE_SIZE, sizeof(uart_event_t));
+    }
+
+    if (uart_data_queue == NULL || uart_event_queue == NULL) {
+        printf("Failed to create UART queues!\n");
         return;
     }
 
-    uart_driver_install ( uart_num, UART_BUFFER_SIZE, UART_BUFFER_SIZE, UART_QUEUE_SIZE, uart_queue, 0 );
-    uart_param_config ( uart_num, &uart_config );
-    uart_set_pin ( uart_num, tx_pin, rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE );
+    if (uart_driver_install(uart_num, UART_BUFFER_SIZE, UART_BUFFER_SIZE, UART_QUEUE_SIZE, &uart_event_queue, 0) != ESP_OK) {
+        printf("UART driver installation failed!\n");
+        return;
+    }
+    
+    uart_param_config(uart_num, &uart_config);
+    uart_set_pin(uart_num, tx_pin, rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-    // Configurar detección de patrones
-    uart_enable_pattern_det_baud_intr ( uart_num, '+', 3, 9, 0, 0 );
-    uart_pattern_queue_reset ( uart_num, 20 );
-
-    printf ( "\n\n===============================\n" );
-    printf ( "Write HELP to see the commands\n" );
-    printf ( "===============================\n\n" );
-
-    //esp_log_level_set ( "UART_LIBRARY", ESP_LOG_NONE );  // Desactivar logs no deseados
+    *uart_queue = uart_event_queue;
+    printf("UART initialized on TX: %d, RX: %d, Baudrate: %d\n", tx_pin, rx_pin, baud_rate);
 }
 
+/**
+ * @brief Procesa eventos UART y envía los datos a una cola.
+ */
+void uart_process_event(void *arg) {
+    uart_event_params_t *params = (uart_event_params_t *)arg;
+    int uart_num = params->uart_num;
+    QueueHandle_t queue = params->uart_queue;
 
-// 🔹 Procesa eventos UART
-void uart_process_event ( void ( *set_color_callback )( float, float, float ), int uart_num, QueueHandle_t uart_queue ) {
     uart_event_t event;
-    uint8_t data [ UART_BUFFER_SIZE ];
-    size_t buffered_size;
+    uint8_t data[UART_BUFFER_SIZE];
 
     while (1) {
-        if ( xQueueReceive ( uart_queue, &event, portMAX_DELAY )) {
-            switch ( event.type ) {
+        if (xQueueReceive(queue, &event, portMAX_DELAY)) {
+            switch (event.type) {
                 case UART_DATA: {
-                    int len = uart_read_bytes (uart_num, data, event.size, portMAX_DELAY );
-                    data [ len ] = '\0';  // Convertir a cadena terminada
-                    uart_execute_command (( char * ) data, set_color_callback );
-                    break;
-                }
-
-                case UART_FIFO_OVF:
-                    printf ( "UART FIFO Overflow detected! Clearing buffer...\n" );
-                    uart_flush_input ( uart_num );
-                    xQueueReset ( uart_queue );
-                    break;
-
-                case UART_BUFFER_FULL:
-                    printf ( "UART Buffer Full! Resetting buffer...\n" );
-                    uart_flush_input ( uart_num );
-                    xQueueReset ( uart_queue );
-                    break;
-
-                case UART_BREAK:
-                    printf ( "UART RX Break detected!\n" );
-                    break;
-
-                case UART_PARITY_ERR:
-                    printf ( "UART Parity Error!\n" );
-                    break;
-
-                case UART_FRAME_ERR:
-                    printf ( "UART Frame Error!\n" );
-                    break;
-
-                case UART_PATTERN_DET:
-                    uart_get_buffered_data_len ( uart_num, &buffered_size );
-                    int pos = uart_pattern_pop_pos ( uart_num );
-                    if ( pos == -1 ) {
-                        uart_flush_input ( uart_num );
+                    int len = uart_read_bytes(uart_num, data, sizeof(data) - 1, portMAX_DELAY);
+                    if (len > 0) {
+                        data[len] = '\0'; // Terminar cadena
+                        printf("Raw UART data: '%s'\n", data); // Para depuración
+                        if (xQueueSend(uart_data_queue, data, portMAX_DELAY) != pdPASS) {
+                            printf("Error: Failed to enqueue UART data.\n");
+                        }
                     } else {
-                        uart_read_bytes ( uart_num, data, pos, 100 / portTICK_PERIOD_MS );
-                        data [ pos ] = '\0';
-                        printf ( "Pattern detected: %s\n", data );
+                        printf("Error: No data received from UART.\n");
                     }
                     break;
-
+                }
                 default:
-                    printf ( "Unknown UART event: %d\n", event.type );
+                    printf("UART event type: %d\n", event.type);
                     break;
             }
         }
@@ -126,40 +123,30 @@ void uart_process_event ( void ( *set_color_callback )( float, float, float ), i
 }
 
 
-// 🔹 Ejecuta un comando recibido
-void uart_execute_command ( const char *received_command, void ( *set_color_callback )( float, float, float )) {
-    char command [ 32 ];
-    char params [ 32 ] = "";  
 
-    sscanf ( received_command, "%31s %31[^\n]", command, params );
-    to_uppercase ( command ) ;
+/**
+ * @brief Ejecuta un comando recibido.
+ */
+void uart_execute_command(const char *received_command, ranges_config_t *config, bool *print_temp, float *red, float *green, float *blue) {
+    char command[32] = {0};
+    float one_value = 0.0f, two_value = 0.0f;
 
-    float value = atof ( params );
-    value = validate_intensity ( value );  
+    // Limpiar los caracteres extraños del comando recibido
+    strncpy(command, received_command, sizeof(command) - 1);
+    char *newline = strchr(command, '\n');
+    if (newline) *newline = '\0'; // Remover salto de línea
+    newline = strchr(command, '\r');
+    if (newline) *newline = '\0'; // Remover retorno de carro
 
-    if ( strcmp(command, "RED" ) == 0 ) {
-        set_color_callback ( LED_ON, LED_OFF, LED_OFF );
+    printf("Processing command: '%s'\n", command); // Depuración
 
-    } else if ( strcmp ( command, "GREEN" ) == 0 ) {
-        set_color_callback ( LED_OFF, LED_ON, LED_OFF );
+    int parsed_values = sscanf(command, "%31s %f %f", command, &one_value, &two_value);
+    to_uppercase(command);
 
-    } else if ( strcmp ( command, "BLUE" ) == 0 ) {
-        set_color_callback ( LED_OFF, LED_OFF, LED_ON );
-
-    } else if ( strcmp ( command, "SET_RED" ) == 0 ) {
-        set_color_callback ( value, UNCHANGED, UNCHANGED );
-
-    } else if ( strcmp ( command, "SET_GREEN" ) == 0 ) {
-        set_color_callback ( UNCHANGED, value, UNCHANGED );
-
-    } else if ( strcmp ( command, "SET_BLUE" ) == 0 ) {
-        set_color_callback ( UNCHANGED, UNCHANGED, value );
-
-    } else if ( strcmp ( command, "HELP" ) == 0 ) {
-        print_help_message ();
-   
-    } else {
-        printf ( "Unknown command: %s", received_command);
+    if (parsed_values < 1) {
+        printf("Invalid command format.\n");
+        return;
     }
-}
 
+    // Procesar el comando...
+}
