@@ -1,6 +1,6 @@
 /**
  * @file UART_Library.h
- * @brief Librería para la comunicación UART en ESP32.
+ * @brief Librería para la comunicación UART en ESP32..
  *
  * Proporciona funciones para inicializar la UART, procesar eventos y ejecutar 
  * comandos recibidos. También maneja la validación de datos y la conversión de texto.
