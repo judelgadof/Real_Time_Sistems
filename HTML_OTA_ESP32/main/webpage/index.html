@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- Fuentes de Google -->
+  <link href="https://fonts.googleapis.com/css?family=Poppins:400,500,600,700&display=swap" rel="stylesheet">
+  <!-- Iconos de FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+  <!-- Estilos y scripts -->
+  <link rel="stylesheet" href="app.css">
+  <script async src="app.js"></script>
+  <title>ESP32 Application - Enhanced Interface</title>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>ESP32 Application Development</h1>
+      <nav>
+        <ul>
+          <li><a href="#OTA"><i class="fas fa-upload"></i> Firmware Update</a></li>
+          <li><a href="#DHT22Sensor"><i class="fas fa-thermometer-half"></i> Temperature</a></li>
+          <li><a href="#WiFiConnect"><i class="fas fa-wifi"></i> WiFi & LED Control</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Sección de Actualización de Firmware -->
+    <section id="OTA">
+      <h2><i class="fas fa-upload"></i> ESP32 Firmware Update</h2>
+      <div class="firmware-info">
+        <label id="latest_firmware_label">Latest Firmware:</label>
+        <span id="latest_firmware">v1.0.0</span>
+      </div>
+      <input type="file" id="selected_file" accept=".bin" onchange="getFileInfo()">
+      <div class="buttons">
+        <input type="button" value="Select File" onclick="document.getElementById('selected_file').click();">
+        <input type="button" value="Update Firmware" onclick="updateFirmware();">
+      </div>
+      <div id="file_info"></div>
+      <div id="ota_progress">
+        <progress id="ota_progress_bar" value="0" max="100"></progress>
+        <span id="ota_progress_percentage">0%</span>
+      </div>
+      <div id="ota_update_status"></div>
+    </section>
+
+    <!-- Sección de NTC -->
+    	<section id="NTCSensor">
+		<h2><i class="fas fa-thermometer-half"></i> Temperature Reading</h2>
+		<div class="sensor-controls">
+		  <input type="button" id="toggle_temperature" value="Show Temperature">
+		  <div class="sensor-data" id="temperature_data" style="display: none;">
+			<label for="temperature_reading">Temperature:</label>
+			<span id="temperature_reading">25°C</span>
+		  </div>
+		</div>
+	  </section>
+
+     <!-- Sección de Potenciometro -->
+     <section id="PotentiometerSensor">
+      <h2><i class="fas fa-tachometer-alt"></i> Potentiometer Reading</h2>
+      <div class="sensor-controls-potentiometer">
+        <input type="button" id="toggle_potentiometer" value="Show Potentiometer Value">
+        <div class="sensor-data-potentiometer" id="potentiometer_data" style="display: none;">
+          <label for="potentiometer_reading">Potentiometer Value:</label>
+          <span id="potentiometer_reading">0</span> <!-- Aquí va el valor dinámico -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección de Control WiFi y LED -->
+    <section id="WiFiConnect">
+      <h2><i class="fas fa-wifi"></i> ESP32 Interaction</h2>
+      <div class="rgb-controls">
+          <div class="rgb-inputs">
+              <!-- Campos para los valores RGB -->
+              <div class="rgb-input">
+                  <label for="red_val">Red</label>
+                  <input id="red_val" type="number" value="0" min="0" max="255">
+              </div>
+              <div class="rgb-input">
+                  <label for="green_val">Green</label>
+                  <input id="green_val" type="number" value="0" min="0" max="255">
+              </div>
+              <div class="rgb-input">
+                  <label for="blue_val">Blue</label>
+                  <input id="blue_val" type="number" value="0" min="0" max="255">
+              </div>
+  
+              <!-- Campos para el tiempo de encendido y apagado -->
+              <div class="rgb-input">
+                  <label for="on_time">On Time (s)</label>
+                  <input id="on_time" type="number" value="0" min="0" max="10">
+              </div>
+              <div class="rgb-input">
+                  <label for="off_time">Off Time (s)</label>
+                  <input id="off_time" type="number" value="0" min="0" max="10">
+              </div>
+          </div>
+  
+          <!-- Botones de control -->
+          <div class="buttons">
+              <input id="send_rgb" type="button" value="Send RGB">
+              <input id="toggle_led" type="button" value="Toggle LED">
+              <input id="apagar_uart" type="button" value="Toggle Terminal">
+          </div>
+      </div>
+      <div id="wifi_connect_credentials_errors"></div>
+      <div id="wifi_connect_status"></div>
+  </section>
